@@ -1,0 +1,212 @@
+@page "/comparison"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using Models
+<script src="https://cdn.jsdelivr.net/npm/chart.js/dist/Chart.min.js"></script>
+
+<PageTitle>Weather Comparison</PageTitle>
+
+<h1>Weather Comparison</h1>
+
+@if(locations == null)
+{
+    <p><em>Loading Locations...</em></p>
+}
+else
+{
+    <div class="form-field">
+        <label>Select City:</label>
+        <div>
+            <select @onchange="Change1stCity" class="form-select">
+                <option value="">-- Select City --</option>
+                @if (locations != null)
+                {
+                    @foreach (var loc in locations)
+                    {
+                        <option value="@loc.City">@loc.City</option>
+                    }
+                }
+            </select>
+            <p></p>
+        </div>
+        <label>Select Comparison City:</label>
+        <div>
+            <select @onchange="Change2ndCity" class="form-select">
+                <option value="">-- Select City --</option>
+                @if (locations != null)
+                {
+                    @foreach (var loc in locations)
+                    {
+                        <option value="@loc.City">@loc.City</option>
+                    }
+                }
+            </select>
+            <p></p>
+        </div>
+        <label>Select Start Date</label>
+        <div>
+            <InputDate TValue="DateTime" @bind-Value="StartDate" />
+            <InputNumber @bind-Value="StartHour" Min="0" Max="23"/>
+            <InputNumber @bind-Value="StartMinute" Min="0" Max="59"/>
+        </div>
+        <label>Select End Date</label>
+        <div>
+            <InputDate TValue="DateTime" @bind-Value="EndDate" />
+            <InputNumber @bind-Value="EndHour" Min="0" Max="23"/>
+            <InputNumber @bind-Value="EndMinute" Min="0" Max="59"/>
+        </div>
+        <button class="btn btn-primary" @onclick="ViewChart">Show Chart</button>
+    </div>
+    
+}
+
+@if (!renderChart)
+{
+    <p><em>No city chosen or no data avaiable</em></p>
+}
+else
+{
+    <div>
+        <canvas id="weatherChartComparison" width="500" height="250"></canvas>
+    </div>
+}
+
+@code {
+
+    private Location[]? locations;
+    private bool renderChart = false;
+    private string? selectedCityName;
+    private string? comparisonCityName;
+
+    public DateTime StartDate = DateTime.Today, EndDate = DateTime.Today;
+    public double StartHour = DateTime.Now.Hour, StartMinute = DateTime.Now.Minute;
+    public double EndHour = DateTime.Now.Hour, EndMinute = DateTime.Now.Minute;
+
+    protected override async Task OnInitializedAsync()
+    {
+        locations = await Http.GetFromJsonAsync<Models.Location[]>("/weather/Get-AllCities");
+    }
+
+    private async Task Change1stCity(ChangeEventArgs e)
+    {
+        var city = e.Value?.ToString();
+        var loc = locations.FirstOrDefault(x => x.City == city);
+        if (loc != null)
+        {
+            selectedCityName = city;
+        }else
+        {
+            renderChart = false;
+        }
+    }
+
+    private async Task Change2ndCity(ChangeEventArgs e)
+    {
+        var city = e.Value?.ToString();
+        var loc = locations.FirstOrDefault(x => x.City == city);
+        if (loc != null)
+        {
+            comparisonCityName = city;
+        }else
+        {
+            renderChart = false;
+        }
+    }
+
+    private async Task ViewChart()
+    {
+        if (string.IsNullOrWhiteSpace(selectedCityName) || string.IsNullOrWhiteSpace(comparisonCityName))
+        {
+            renderChart = false;
+            return;
+        }
+
+        //prepare initial data
+        var lowerBound = StartDate.AddHours(StartHour).AddMinutes(StartMinute);
+
+        //adjust lower bound for quarter of hour interval
+        lowerBound = lowerBound.AddMinutes(-(lowerBound.Minute % 15)).AddSeconds(-lowerBound.Second).AddMilliseconds(-lowerBound.Millisecond);
+        var now = EndDate.AddHours(EndHour).AddMinutes(EndMinute);
+
+        //adjust upper bound for quarter of hour interval
+        if (now.Minute % 15 != 0 || now.Second != 0 || now.Millisecond != 0)
+        {
+            now = now.AddMinutes(15 - (now.Minute % 15)).AddSeconds(-now.Second).AddMilliseconds(-now.Millisecond);
+        }
+
+        var allTimes = new List<DateTime>();
+        var current = lowerBound;
+        while (current <= now)
+        {
+            allTimes.Add(current);
+            current = current.AddMinutes(15);
+        }
+        var labels = allTimes.Select(t => t.ToString("HH:mm dd.MM")).ToList();
+
+        //1st city
+        var firstCityWeathers = await Http.GetFromJsonAsync<Models.Weather[]>($"/weather/Get-ByCity?cityName={selectedCityName}");
+        
+        var firstCityWeatherSpan = firstCityWeathers.Where(
+            x => 
+            {
+                var dt = x.DateOnly.ToDateTime(x.TimeOnly);
+                return dt >= lowerBound && dt <= now;
+            }
+        ).ToList();
+
+        var tempDict = firstCityWeatherSpan.ToDictionary(
+            w => w.DateOnly.ToDateTime(w.TimeOnly),
+            w => (double?)w.TemperatureC
+        );
+
+        var firstCityTemperatures = allTimes
+            .Select(t => tempDict.TryGetValue(t, out var temp) ? temp : (double?)null)
+            .ToList();
+
+        //2nd city
+        var secondCityWeathers = await Http.GetFromJsonAsync<Models.Weather[]>($"/weather/Get-ByCity?cityName={comparisonCityName}");
+        
+        var secondCityWeatherSpan = secondCityWeathers.Where(
+            x => 
+            {
+                var dt = x.DateOnly.ToDateTime(x.TimeOnly);
+                return dt >= lowerBound && dt <= now;
+            }).ToList();
+
+        tempDict = secondCityWeatherSpan.ToDictionary(
+            w => w.DateOnly.ToDateTime(w.TimeOnly),
+            w => (double?)w.TemperatureC
+        );
+
+        var secondCityTemperatures = allTimes
+            .Select(t => tempDict.TryGetValue(t, out var temp) ? temp : (double?)null)
+            .ToList();
+
+        var datasets = new[]
+        {
+            new {
+                label = selectedCityName,
+                data = firstCityTemperatures,
+                borderColor = "rgba(75, 192, 192, 1)",
+                backgroundColor = "rgba(75, 192, 192, 0.2)",
+                fill = false,
+                tension = 0.1
+            },
+            new {
+                label = comparisonCityName,
+                data = secondCityTemperatures,
+                borderColor = "rgba(255, 99, 132, 1)",
+                backgroundColor = "rgba(255, 99, 132, 0.2)",
+                fill = false,
+                tension = 0.1
+            }
+        };
+        renderChart = true;
+        StateHasChanged();
+
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("weatherChartComparison.render", "weatherChartComparison", labels, datasets);
+    }
+}
