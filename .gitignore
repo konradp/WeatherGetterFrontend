@@ -1,0 +1,51 @@
+# Build results
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code settings
+.vscode/
+
+# Visual Studio settings
+*.vs/
+.vs/
+
+# NuGet packages
+*.nupkg
+packages/
+.nuget/
+
+# Logs
+*.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.temp
+
+# IIS/ASP.NET
+*.pidb
+*.svclog
+*.dbmdl
+
+# Publish output
+publish/
+wwwroot/dist/
+wwwroot/node_modules/
+
+# Rider IDE
+.idea/
+*.sln.iml
+
+# Others
