@@ -1,0 +1,126 @@
+﻿@page "/cities"
+@attribute [StreamRendering]
+@inject HttpClient Http
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+@using Models
+
+<PageTitle>Citiies Overview</PageTitle>
+
+<h3>Add City:</h3>
+<EditForm Model="@cityInput" OnValidSubmit="AddCity" FormName="AddCityForm">
+<div class="form-field">
+    <label>Name:</label>
+    <div>
+        <InputText @bind-value=cityInput.CityName />
+        <ValidationMessage For="@(() => cityInput.CityName)" />
+        <p></p>
+        <button type="submit">
+            Add City
+        </button>
+    </div>
+</div>
+</EditForm>
+
+<h3>Remove City:</h3>
+<EditForm Model="@removeCity" OnValidSubmit="RemoveCity" FormName="RemoveCityForm">
+<div class="form-field">
+    <label>Name:</label>
+    <div>
+        <select @bind="selectedCityName" class="form-select">
+            <option value="">-- Select City --</option>
+            @if (locations != null)
+            {
+                @foreach (var loc in locations)
+                {
+                    <option value="@loc.City">@loc.City</option>
+                }
+            }
+        </select>
+        <ValidationMessage For="@(() => selectedCityName)" />
+        <p></p>
+        <button type="submit">
+            Remove City
+        </button>
+    </div>
+</div>
+</EditForm>
+
+
+<h3>City List:</h3>
+
+@if(locations == null)
+{
+    <p><em>Loading Locations...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var loc in locations)
+            {
+                <tr>
+                    <td>@loc.Id</td>
+                    <td>@loc.City</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+
+    private Location[]? locations;
+    private CityInput cityInput = new CityInput();
+    private CityInput removeCity = new CityInput();
+    private string? selectedCityName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        locations = await Http.GetFromJsonAsync<Location[]>("/weather/Get-AllCities");
+    }
+
+    private async Task AddCity()
+    {
+        if (string.IsNullOrWhiteSpace(cityInput.CityName))
+        {
+            return;
+        }
+        var response = await Http.PostAsync($"/weather/Post-CityToDB?cityName={cityInput.CityName}", null);
+        if (response.IsSuccessStatusCode)
+        {
+            locations = await Http.GetFromJsonAsync<Location[]>("/weather/Get-AllCities");
+            StateHasChanged();
+        }
+        cityInput = new CityInput();
+    }
+
+    private async Task RemoveCity()
+    {
+        if (string.IsNullOrWhiteSpace(selectedCityName))
+            return;
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to remove '{selectedCityName}'?");
+        if (!confirmed)
+            return;
+        
+        var response = await Http.DeleteAsync($"/weather/Delete-City?cityName={selectedCityName}");
+        if (response.IsSuccessStatusCode)
+        {
+            locations = await Http.GetFromJsonAsync<Location[]>("/weather/Get-AllCities");
+            StateHasChanged();
+        }
+        selectedCityName = null;
+    }
+    
+    public class CityInput
+    {
+        public string CityName { get; set; } = string.Empty;
+    }
+}
