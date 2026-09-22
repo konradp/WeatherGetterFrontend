@@ -11,4 +11,9 @@
     <PackageReference Include="Chart.js" Version="3.7.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="WeatherGetterFrontend.Tests\**\*.cs" />
+    <Compile Remove="WeatherGetterFrontend.E2E\**\*.cs" />
+  </ItemGroup>
+
 </Project>

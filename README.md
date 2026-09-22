@@ -9,10 +9,11 @@ A modern weather information web application built with ASP.NET Core 8.0 and Bla
 - Compare weather conditions between multiple locations
 - Visualize weather data using Chart.js
 - Bootstrap-powered responsive UI
+- Automated tests with xUnit, bUnit, and Playwright
 
 ## Presentation
 
-<a href="https://www.youtube.com/watch?v=LvGLFAnlJyU" target="_blank">Watch the project presentation on YouTube</a>
+<a href="https://www.youtube.com/watch?v=q3m4nJmy7wA" target="_blank">Watch the project presentation on YouTube</a>
 
 ## Technologies
 
@@ -22,6 +23,11 @@ A modern weather information web application built with ASP.NET Core 8.0 and Bla
 - Chart.js v3.7.1
 - C# with .NET 8.0
 - CSS with Bootstrap
+
+## Project Structure
+
+- `WeatherGetterFrontend.Tests` - unit/component tests (xUnit + bUnit)
+- `WeatherGetterFrontend.E2E` - end-to-end smoke tests (xUnit + Playwright)
 
 ## Getting Started
 
@@ -49,6 +55,24 @@ dotnet run
 
 # Production build
 dotnet publish -c Release
+```
+
+### Testing
+
+```bash
+# Component and unit tests
+dotnet test WeatherGetterFrontend.Tests/WeatherGetterFrontend.Tests.csproj
+
+# End-to-end smoke tests
+dotnet test WeatherGetterFrontend.E2E/WeatherGetterFrontend.E2E.csproj
+```
+
+### Playwright Setup (First Run)
+
+Install Chromium for Playwright before running E2E tests for the first time:
+
+```bash
+pwsh WeatherGetterFrontend.E2E/bin/Debug/net8.0/playwright.ps1 install chromium
 ```
 
 ##  License
