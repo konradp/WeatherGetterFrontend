@@ -11,10 +11,6 @@ A modern weather information web application built with ASP.NET Core 8.0 and Bla
 - Bootstrap-powered responsive UI
 - Automated tests with xUnit, bUnit, and Playwright
 
-## Presentation
-
-<a href="https://www.youtube.com/watch?v=q3m4nJmy7wA" target="_blank">Watch the project presentation on YouTube</a>
-
 ## Technologies
 
 - ASP.NET Core 8.0
